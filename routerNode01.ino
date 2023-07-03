@@ -16,12 +16,27 @@ struct data
   int tandanode;
   float temperature;
   float humidity;
+  int jam;
+  int menit;
+  int detik;
+};
+
+struct data1{
+  int tandanode;
+  float temperature;
+  float humidity;
   uint8_t jam;
   uint8_t menit;
   uint8_t detik;
 };
 
 struct data receivedData;
+struct data sentData;
+
+sentData.jam = now.hour();
+sentData.menit = now.minute();
+sentData.detik = now.second();
+
 
 const unsigned long interval = 12000;
 const unsigned long node01ReadStart = 4000;
@@ -39,9 +54,8 @@ void setup()
   rf24.begin();
   rf24.setDataRate(RF24_2MBPS);
   rf24.openReadingPipe(1, 0xF0F0F0F0E1LL);
-  rf24.openWritingPipe(1, 0xF0F0F0F0D2LL);
+  rf24.openWritingPipe(0xF0F0F0F0E2LL)
   rf24.setPALevel(RF24_PA_MIN);
-  rf24.startListening();
   rtc.begin();
 }
 
@@ -50,8 +64,11 @@ void loop()
   DateTime now = rtc.now();
   unsigned long currentMillis = millis();
 
+ 
   if (currentMillis % interval >= node01ReadStart && currentMillis % interval <= node01ReadEnd)
   {
+    rf24.stopListening();
+
     float temperature = dht.readTemperature();
     float humidity = dht.readHumidity();
 
@@ -77,13 +94,47 @@ void loop()
     Serial.println();
   }
 
-  if (rf24.available())
-  {
+if (currentMillis % interval >= node11Start && currentMillis % interval <= node11End){
+  rf24.startListening();
+
+  if (rf24.available()){
     rf24.read(&receivedData, sizeof(receivedData));
 
-    if (receivedData.tandanode == 11 || receivedData.tandanode == 12)
-    {
-      Serial.print("Received Data from Node ");
+    if (receivedData.tandanode == 11){
+      Serial.print("Received Data from Node: ");
+      Serial.println(receivedData.tandanode);
+      Serial.print("Temperature: ");
+      Serial.print(receivedData.temperature);
+      Serial.println(" °C");
+      Serial.print("Humidity: ");
+      Serial.print(receivedData.humidity);
+      Serial.println(" %");
+      Serial.print("Jam: ");
+      Serial.println();
+
+       if(currentMillis % interval >= 2000 && currentMillis % interval <= 4000){
+       
+        sentData.tandanode = receivedData.tandanode;
+        sentData.temperature = receivedData.temperature;
+        sentData.humidity = receivedData.humidity;
+        sentData.jam = now.hour();
+        sentData.menit = now.minute();
+        sentData.detik = now.second();
+
+        rf24.stopListening();
+        rf24.write(&sentData, sizeof(sentData));
+       }
+    }
+  }
+}
+
+if (currentMillis % interval >= node12Start && currentMillis % interval <= node12End){
+  rf24.startListening();
+
+  if (rf24.available()){
+    rf24.read(&receivedData, sizeof(receivedData));
+    if (receivedData.tandanode == 12){
+      Serial.print("Received Data from Node: ");
       Serial.println(receivedData.tandanode);
       Serial.print("Temperature: ");
       Serial.print(receivedData.temperature);
@@ -98,8 +149,21 @@ void loop()
       Serial.print("Detik: ");
       Serial.println(receivedData.detik);
       Serial.println();
+
+      if(currentMillis % interval >= 2000 && currentMillis % interval <= 4000){
+        
+        sentData.tandanode = receivedData.tandanode;
+        sentData.temperature = receivedData.temperature;
+        sentData.humidity = receivedData.humidity;
+        sentData.jam = now.hour();
+        sentData.menit = now.minute();
+        sentData.detik = now.second();
+
+        rf24.stopListening();
+        rf24.write(&sentData, sizeof(sentData));
+       }
     }
   }
-
+}
   delay(1000);
 }
