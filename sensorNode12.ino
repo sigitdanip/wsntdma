@@ -23,10 +23,6 @@ struct data
 
 struct data sentData;
 
-const unsigned long interval = 12000;  // 12 seconds interval
-const unsigned long node12TimeStart = 6000;
-const unsigned long node12TimeEnd = 8000;
-
 void setup()
 {
   Serial.begin(9600);
@@ -42,10 +38,7 @@ void setup()
 void loop()
 {
   DateTime now = rtc.now();
-  unsigned long currentMillis = millis();
 
-  if (currentMillis % interval >= node12TimeStart && currentMillis % interval <= node12TimeEnd)
-  {
     float temperature = dht.readTemperature();
     float humidity = dht.readHumidity();
 
@@ -80,7 +73,7 @@ void loop()
     Serial.print("Detik: ");
     Serial.println(sentData.detik);
     Serial.println();
-  }
 
-  delay(1000);
+    delay(2000);
 }
+
