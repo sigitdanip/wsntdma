@@ -21,31 +21,24 @@ struct data
   int detik;
 };
 
-struct data1{
+struct data1
+{
   int tandanode;
   float temperature;
   float humidity;
-  uint8_t jam;
-  uint8_t menit;
-  uint8_t detik;
+  int jam;
+  int menit;
+  int detik;
 };
 
 struct data receivedData;
 struct data sentData;
+struct data1 sentDataR;
 
-sentData.jam = now.hour();
-sentData.menit = now.minute();
-sentData.detik = now.second();
-
-
-const unsigned long interval = 12000;
-const unsigned long node01ReadStart = 4000;
-const unsigned long node01ReadEnd = 6000;
-const unsigned long node11Start = 0;
-const unsigned long node11End = 4000;
-const unsigned long node12Start = 6000;
-const unsigned long node12End = 10000;
-
+const unsigned long interval = 15000;
+bool sendDataNode1 = false;
+bool sendDataNode11 = false;
+bool sendDataNode12 = false;
 
 void setup()
 {
@@ -54,116 +47,159 @@ void setup()
   rf24.begin();
   rf24.setDataRate(RF24_2MBPS);
   rf24.openReadingPipe(1, 0xF0F0F0F0E1LL);
-  rf24.openWritingPipe(0xF0F0F0F0E2LL)
+  rf24.openWritingPipe(0xF0F0F0F0E2LL);
   rf24.setPALevel(RF24_PA_MIN);
   rtc.begin();
 }
 
 void loop()
 {
+
   DateTime now = rtc.now();
   unsigned long currentMillis = millis();
 
- 
-  if (currentMillis % interval >= node01ReadStart && currentMillis % interval <= node01ReadEnd)
+  if(currentMillis - 0 >= interval){
+  if (currentMillis % interval >= 6000 && currentMillis % interval <= 9000)
   {
-    rf24.stopListening();
-
-    float temperature = dht.readTemperature();
-    float humidity = dht.readHumidity();
-
-    if (isnan(humidity) || isnan(temperature))
+    if (!sendDataNode1)
     {
-      Serial.println("Failed to read DHT11 sensor!");
-      return;
-    }
+      sendDataNode1 = true;
 
-    Serial.println("Reading Data from Node 01:");
-    Serial.print("Temperature: ");
-    Serial.print(temperature);
-    Serial.println(" °C");
-    Serial.print("Humidity: ");
-    Serial.print(humidity);
-    Serial.println(" %");
-    Serial.print("Jam: ");
-    Serial.println(now.hour());
-    Serial.print("Menit: ");
-    Serial.println(now.minute());
-    Serial.print("Detik: ");
-    Serial.println(now.second());
-    Serial.println();
+      sentDataR.tandanode = 1;
+      sentDataR.temperature = dht.readTemperature();
+      sentDataR.humidity = dht.readHumidity();
+      sentDataR.jam = now.hour();
+      sentDataR.menit = now.minute();
+      sentDataR.detik = now.second();
+
+      if (isnan(sentDataR.humidity) || isnan(sentDataR.temperature))
+      {
+        Serial.println("Failed to read DHT11 sensor!");
+        return;
+      }
+
+      rf24.stopListening();
+      rf24.write(&sentDataR, sizeof(sentDataR));
+      Serial.print("Sent data node 1 to Gateway at: ");
+      Serial.print(sentDataR.jam);
+      Serial.print(":");
+      Serial.print(sentDataR.menit);
+      Serial.print(":");
+      Serial.print(sentDataR.detik);
+      Serial.println();
+    }
+  }
+  else
+  {
+    sendDataNode1 = false;
   }
 
-if (currentMillis % interval >= node11Start && currentMillis % interval <= node11End){
-  rf24.startListening();
+  if (currentMillis % interval >= 0 && currentMillis % interval <= 3000)
+  {
+      rf24.startListening();
+      if (rf24.available())
+      {
+        rf24.read(&receivedData, sizeof(receivedData));
 
-  if (rf24.available()){
-    rf24.read(&receivedData, sizeof(receivedData));
+        if (receivedData.tandanode == 11)
+        {
+          Serial.print("Received Data from Node: ");
+          Serial.print(receivedData.tandanode);
+          Serial.print(", Temperature: ");
+          Serial.print(receivedData.temperature);
+          Serial.print(" °C, ");
+          Serial.print("Humidity: ");
+          Serial.print(receivedData.humidity);
+          Serial.print(" %, ");
+          Serial.print(now.hour());
+          Serial.print(":");
+          Serial.print(now.minute());
+          Serial.print(":");
+          Serial.print(now.second());
+          Serial.println();
+        }
+      }
+  }
+      if (currentMillis % interval >= 3000 && currentMillis % interval <= 6000){
+          if(!sendDataNode11)
+          {
+            sendDataNode11 = true;
 
-    if (receivedData.tandanode == 11){
-      Serial.print("Received Data from Node: ");
-      Serial.println(receivedData.tandanode);
-      Serial.print("Temperature: ");
-      Serial.print(receivedData.temperature);
-      Serial.println(" °C");
-      Serial.print("Humidity: ");
-      Serial.print(receivedData.humidity);
-      Serial.println(" %");
-      Serial.print("Jam: ");
-      Serial.println();
+          sentData.tandanode = receivedData.tandanode;
+          sentData.temperature = receivedData.temperature;
+          sentData.humidity = receivedData.humidity;
+          sentData.jam = now.hour();
+          sentData.menit = now.minute();
+          sentData.detik = now.second();
 
-       if(currentMillis % interval >= 2000 && currentMillis % interval <= 4000){
+          rf24.stopListening();
+          rf24.write(&sentData, sizeof(sentData));
+          Serial.print("Sent data node 11 to Gateway at ");
+          Serial.print(sentData.jam);
+          Serial.print(":");
+          Serial.print(sentData.menit);
+          Serial.print(":");
+          Serial.print(sentData.detik);
+          Serial.println();
+        }
+      }
+      else
+      {
+         sendDataNode11 = false;
+      }
        
-        sentData.tandanode = receivedData.tandanode;
-        sentData.temperature = receivedData.temperature;
-        sentData.humidity = receivedData.humidity;
-        sentData.jam = now.hour();
-        sentData.menit = now.minute();
-        sentData.detik = now.second();
+  if (currentMillis % interval >= 9000 && currentMillis % interval <= 12000)
+  {
+      rf24.startListening();
 
-        rf24.stopListening();
-        rf24.write(&sentData, sizeof(sentData));
-       }
+      if (rf24.available())
+      {
+        rf24.read(&receivedData, sizeof(receivedData));
+        if (receivedData.tandanode == 12)
+        {
+          Serial.print("Received Data from Node: ");
+          Serial.print(receivedData.tandanode);
+          Serial.print(", Temperature: ");
+          Serial.print(receivedData.temperature);
+          Serial.print(" °C, ");
+          Serial.print("Humidity: ");
+          Serial.print(receivedData.humidity);
+          Serial.print(" %, ");
+          Serial.print(now.hour());
+          Serial.print(":");
+          Serial.print(now.minute());
+          Serial.print(":");
+          Serial.print(now.second());
+          Serial.println();
+        }
+      }
+  }
+    if (currentMillis % interval >= 12000 && currentMillis % interval <= 15000)
+  {
+      if (!sendDataNode12){
+        sendDataNode12 = true;
+
+          sentData.tandanode = receivedData.tandanode;
+          sentData.temperature = receivedData.temperature;
+          sentData.humidity = receivedData.humidity;
+          sentData.jam = now.hour();
+          sentData.menit = now.minute();
+          sentData.detik = now.second();
+
+          rf24.stopListening();
+          rf24.write(&sentData, sizeof(sentData));
+          Serial.print("Sent data node 12 to Gateway at ");
+          Serial.print(sentData.jam);
+          Serial.print(":");
+          Serial.print(sentData.menit);
+          Serial.print(":");
+          Serial.print(sentData.detik);
+          Serial.println();
+      }
+    }
+    else
+    {
+         sendDataNode12 = false;
     }
   }
-}
-
-if (currentMillis % interval >= node12Start && currentMillis % interval <= node12End){
-  rf24.startListening();
-
-  if (rf24.available()){
-    rf24.read(&receivedData, sizeof(receivedData));
-    if (receivedData.tandanode == 12){
-      Serial.print("Received Data from Node: ");
-      Serial.println(receivedData.tandanode);
-      Serial.print("Temperature: ");
-      Serial.print(receivedData.temperature);
-      Serial.println(" °C");
-      Serial.print("Humidity: ");
-      Serial.print(receivedData.humidity);
-      Serial.println(" %");
-      Serial.print("Jam: ");
-      Serial.println(receivedData.jam);
-      Serial.print("Menit: ");
-      Serial.println(receivedData.menit);
-      Serial.print("Detik: ");
-      Serial.println(receivedData.detik);
-      Serial.println();
-
-      if(currentMillis % interval >= 2000 && currentMillis % interval <= 4000){
-        
-        sentData.tandanode = receivedData.tandanode;
-        sentData.temperature = receivedData.temperature;
-        sentData.humidity = receivedData.humidity;
-        sentData.jam = now.hour();
-        sentData.menit = now.minute();
-        sentData.detik = now.second();
-
-        rf24.stopListening();
-        rf24.write(&sentData, sizeof(sentData));
-       }
-    }
-  }
-}
-  delay(1000);
 }
