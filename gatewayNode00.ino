@@ -29,7 +29,7 @@ void loop() {
 
         if (isnan(humidity) || isnan(temperature))
     {
-      Serial.println("Failed to read DHT11 sensor!");
+      Serial.println("Parsing Failed");
       return;
     }
 
