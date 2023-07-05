@@ -2,12 +2,12 @@
 #include <RF24.h>
 
 struct SensorData {
-  float temperature;
-  float humidity;
-  int detik;
-  int menit;
-  int jam;
-  int tandanode;
+  String temperature;
+  String humidity;
+  String detik;
+  String menit;
+  String jam;
+  String tandanode;
 };
 
 RF24 rf24(D2, D1);
