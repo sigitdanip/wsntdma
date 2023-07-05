@@ -16,9 +16,9 @@ struct data
   int tandanode;
   float temperature;
   float humidity;
-  uint8_t jam;
-  uint8_t menit;
-  uint8_t detik;
+  int jam;
+  int menit;
+  int detik;
 };
 
 struct data sentData;
