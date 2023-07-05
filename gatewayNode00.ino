@@ -27,6 +27,12 @@ void loop() {
     SensorData data;
     rf24.read(&data, sizeof(data));
 
+        if (isnan(humidity) || isnan(temperature))
+    {
+      Serial.println("Failed to read DHT11 sensor!");
+      return;
+    }
+
     Serial.print("Temperature: ");
     Serial.print(data.temperature);
     Serial.print(" °C, Humidity: ");
